@@ -35,3 +35,6 @@ def main(page: ft.Page):
     page.update()
 
 ft.app(target=main)
+
+if _name_ == "_main_":
+    ft.app(target=main, view=ft.AppView.WEB_BROWSER)
