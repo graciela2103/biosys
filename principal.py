@@ -1,22 +1,13 @@
 import flet as ft
-from pyairtable import Api
-from pyairtable.formulas import match
-
-# Airtable config
-API_KEY = "patCJHPsDL7m21JV7.bf57d0d57c46b04f0389db4579826244822df412291c5bf64b721e4614abdd55"
-BASE_ID = "appktXM30kKg7swqX"
-TABLE_NAME = "Usuario"
-
-api = Api(API_KEY)
-tabla_usuarios = api.base(BASE_ID).table(TABLE_NAME)
+from flet import Colors, Icons
+from modelos import Usuario, Bioenergia
 
 def main(page: ft.Page):
-    page.title = "Sistema de Gestión"
+    page.title = "Sistema Gestión Bioenergías Tabasco"
+    page.window_width = 500
+    page.window_height = 700
     page.theme_mode = "light"
 
-    # ---------------- Login ----------------
-    usuario_input = ft.TextField(label="Usuario")
-    password_input = ft.TextField(label="Contraseña", password=True, can_reveal_password=True)
     mensaje_snack = ft.SnackBar(content=ft.Text(""))
 
     def mostrar_snack(texto):
@@ -25,156 +16,394 @@ def main(page: ft.Page):
         page.snack_bar = mensaje_snack
         page.update()
 
+    def limpiar_y_agregar(controles):
+        page.controls.clear()
+        for c in controles:
+            page.controls.append(c)
+        page.update()
+
+    # --- Login ---
+    usuario_input = ft.TextField(label="Usuario", width=300, icon=Icons.PERSON)
+    password_input = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, width=300, icon=Icons.LOCK)
+    btn_login = ft.ElevatedButton(
+        "Ingresar",
+        width=150,
+        icon=Icons.KEY,
+        style=ft.ButtonStyle(
+            color=Colors.WHITE,
+            bgcolor=Colors.PURPLE_800,
+            overlay_color=Colors.PURPLE_400
+        )
+    )
+
     def validar_credenciales(e):
-        usuario = usuario_input.value
-        password = password_input.value
+        u = usuario_input.value.strip()
+        p = password_input.value.strip()
+        if u == "demo" and p == "demo":
+            mostrar_snack("Login correcto")
+            mostrar_menu()
+        else:
+            mostrar_snack("Usuario o contraseña incorrectos")
 
-        try:
-            formula = match({"clave": usuario, "contra": password})
-            registro = tabla_usuarios.first(formula=formula)
-            if registro:
-                print("Funciona!")
-                page.go("/menu")
-            else:
-                print(f"Usuario '{usuario}' no encontrado.")
-                mostrar_snack("Usuario o contraseña incorrectos.")
-        except Exception as err:
-            print(f"Error de Airtable: {err}")
-            mostrar_snack("Error de conexión con Airtable.")
+    btn_login.on_click = validar_credenciales
 
-    # ---------------- Menú principal ----------------
-    def mostrar_menu_principal():
-        page.views.append(
-            ft.View(
-                route="/menu",
-                controls=[
-                    ft.AppBar(
-                        title=ft.Text("SISTEMA DE GESTIÓN DE USUARIOS"),
-                        leading=ft.Icon("people"),
-                        bgcolor="purple",
-                        color="white"
-                    ),
-                    ft.Column(
-                        controls=[
-                            ft.ElevatedButton("Agregar nuevo usuario", on_click=lambda e: page.go("/agregar_usuario")),
-                            ft.ElevatedButton("Consultar usuarios", on_click=lambda e: page.go("/consultar_usuarios")),
-                            ft.ElevatedButton("Cerrar sesión", on_click=lambda e: page.go("/"))
-                        ],
-                        alignment=ft.MainAxisAlignment.CENTER,
-                        horizontal_alignment=ft.CrossAxisAlignment.CENTER
+    def mostrar_login():
+        controles = [
+            ft.Row(
+                [ft.Icon(Icons.KEY, size=80, color=Colors.PURPLE_800)],
+                alignment=ft.MainAxisAlignment.CENTER,
+            ),
+            ft.Text("Iniciar sesión", size=30, weight=ft.FontWeight.BOLD, color=Colors.PURPLE_900, text_align=ft.TextAlign.CENTER),
+            usuario_input,
+            password_input,
+            btn_login,
+        ]
+        limpiar_y_agregar([
+            ft.Column(controles,
+                      alignment=ft.MainAxisAlignment.CENTER,
+                      horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                      spacing=20,
+                      expand=True)
+        ])
+
+    # --- menú principal con botones estilo cuadro y animación ---
+    def mostrar_menu():
+        def cuadro_boton(texto, icono, color_bg, on_click):
+            container = ft.Container(
+                width=300,
+                height=80,
+                bgcolor=color_bg,
+                border_radius=10,
+                alignment=ft.alignment.center,
+                content=ft.Row(
+                    [
+                        ft.Icon(icono, size=30, color=Colors.WHITE),
+                        ft.Text(texto, size=20, weight=ft.FontWeight.BOLD, color=Colors.WHITE),
+                    ],
+                    alignment=ft.MainAxisAlignment.CENTER,
+                    spacing=15,
+                ),
+                shadow=ft.BoxShadow(
+                    spread_radius=0,
+                    blur_radius=0,
+                    color=Colors.TRANSPARENT,
+                    offset=ft.Offset(0, 0),
+                ),
+            )
+
+            def on_hover(e: ft.HoverEvent):
+                if e.data == "true":
+                    container.shadow = ft.BoxShadow(
+                        spread_radius=1,
+                        blur_radius=15,
+                        color=Colors.PURPLE_300,
+                        offset=ft.Offset(0, 4),
                     )
-                ],
-                vertical_alignment=ft.MainAxisAlignment.CENTER
-            )
-        )
-        page.update()
+                    container.update()
+                else:
+                    container.shadow = ft.BoxShadow(
+                        spread_radius=0,
+                        blur_radius=0,
+                        color=Colors.TRANSPARENT,
+                        offset=ft.Offset(0, 0),
+                    )
+                    container.update()
 
-    # ---------------- Agregar usuario ----------------
+            container.on_hover = on_hover
+            container.on_click = on_click
+            return container
+
+        controles = [
+            ft.Text(
+                "Menú principal",
+                size=40,
+                weight=ft.FontWeight.BOLD,
+                color=Colors.PURPLE_900,
+                text_align=ft.TextAlign.CENTER,
+                style=ft.TextThemeStyle.HEADLINE_MEDIUM,
+            ),
+            ft.Container(height=30),
+            cuadro_boton(
+                "Agregar nuevo usuario",
+                Icons.PERSON_ADD,
+                Colors.PURPLE_900,
+                on_click=lambda e: mostrar_agregar_usuario()
+            ),
+            cuadro_boton(
+                "Consultar usuarios",
+                Icons.PEOPLE,
+                Colors.PURPLE_700,
+                on_click=lambda e: mostrar_consultar_usuarios()
+            ),
+            cuadro_boton(
+                "Agregar bioenergía",
+                Icons.ENERGY_SAVINGS_LEAF,
+                Colors.PURPLE_600,
+                on_click=lambda e: mostrar_agregar_bioenergia()
+            ),
+            cuadro_boton(
+                "Consultar bioenergías",
+                Icons.SPA,
+                Colors.PURPLE_600,
+                on_click=lambda e: mostrar_consultar_bioenergia()
+            ),
+            cuadro_boton(
+                "Cerrar sesión",
+                Icons.LOGOUT,
+                Colors.PURPLE_900,
+                on_click=lambda e: mostrar_login()
+            ),
+        ]
+
+        limpiar_y_agregar([
+            ft.Column(
+                controles,
+                alignment=ft.MainAxisAlignment.CENTER,
+                horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                spacing=20,
+                expand=True
+            )
+        ])
+
+    # --- AGREGAR USUARIO ---
+    nombre_input = ft.TextField(label="Nombre", width=300, icon=Icons.BADGE)
+    clave_input = ft.TextField(label="Usuario (clave)", width=300, icon=Icons.PERSON)
+    contra_input = ft.TextField(label="Contraseña", password=True, can_reveal_password=True, width=300, icon=Icons.LOCK)
+    btn_registrar_usuario = ft.ElevatedButton(
+        "Registrar usuario",
+        width=150,
+        icon=Icons.CHECK,
+        style=ft.ButtonStyle(bgcolor=Colors.PURPLE_700, color=Colors.WHITE)
+    )
+
+    def registrar_usuario(e):
+        n = nombre_input.value.strip()
+        c = clave_input.value.strip()
+        p = contra_input.value.strip()
+        if not n or not c or not p:
+            mostrar_snack("Todos los campos son obligatorios")
+            return
+        try:
+            nuevo = Usuario(nombre=n, clave=c, contra=p, admin=False)
+            nuevo.save()
+            mostrar_snack("Usuario registrado correctamente")
+            nombre_input.value = clave_input.value = contra_input.value = ""
+            page.update()
+        except Exception as err:
+            mostrar_snack("Error al registrar usuario en Airtable")
+            print("Error registrar usuario:", err)
+
+    btn_registrar_usuario.on_click = registrar_usuario
+
     def mostrar_agregar_usuario():
-        nombre = ft.TextField(label="Nombre")
-        clave = ft.TextField(label="Usuario (clave)")
-        contra = ft.TextField(label="Contraseña", password=True, can_reveal_password=True)
+        controles = [
+            ft.Text("Agregar nuevo usuario", size=30, weight=ft.FontWeight.BOLD, color=Colors.PURPLE_700, text_align=ft.TextAlign.CENTER),
+            nombre_input,
+            clave_input,
+            contra_input,
+            btn_registrar_usuario,
+            ft.ElevatedButton("Volver al menú", width=150, on_click=lambda e: mostrar_menu()),
+        ]
+        limpiar_y_agregar([
+            ft.Column(controles,
+                      spacing=15,
+                      horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                      alignment=ft.MainAxisAlignment.CENTER,
+                      expand=True)
+        ])
 
-        def registrar_usuario(e):
-            if not nombre.value or not clave.value or not contra.value:
-                mostrar_snack("Todos los campos son obligatorios.")
-                return
-            try:
-                tabla_usuarios.create({
-                    "nombre": nombre.value,
-                    "clave": clave.value,
-                    "contra": contra.value
-                })
-                mostrar_snack("Usuario registrado correctamente.")
-                nombre.value = clave.value = contra.value = ""
-                page.update()
-            except Exception as err:
-                print("Error al registrar:", err)
-                mostrar_snack("Error al registrar en Airtable.")
-
-        page.views.append(
-            ft.View(
-                route="/agregar_usuario",
-                controls=[
-                    ft.AppBar(title=ft.Text("Agregar nuevo usuario")),
-                    nombre,
-                    clave,
-                    contra,
-                    ft.ElevatedButton("Registrar", on_click=registrar_usuario),
-                    ft.ElevatedButton("Volver al menú", on_click=lambda e: page.go("/menu"))
-                ]
-            )
-        )
-        page.update()
-
-    # ---------------- Consultar usuarios ----------------
+    # --- CONSULTAR USUARIOS ---
     def mostrar_consultar_usuarios():
         try:
-            registros = tabla_usuarios.all()
+            registros = Usuario.all()
             filas = []
-
             for r in registros:
-                data = r["fields"]
                 filas.append(
                     ft.DataRow(
                         cells=[
-                            ft.DataCell(ft.Text(data.get("nombre", ""))),
-                            ft.DataCell(ft.Text(data.get("clave", ""))),
-                            ft.DataCell(ft.Text(data.get("contra", "")))
+                            ft.DataCell(ft.Text(r.nombre)),
+                            ft.DataCell(ft.Text(r.clave)),
+                            ft.DataCell(ft.Text(r.contra)),
+                            ft.DataCell(ft.Text("Sí" if r.admin else "No")),
                         ]
                     )
                 )
-
             tabla = ft.DataTable(
                 columns=[
                     ft.DataColumn(label=ft.Text("Nombre")),
                     ft.DataColumn(label=ft.Text("Usuario")),
-                    ft.DataColumn(label=ft.Text("Contraseña"))
+                    ft.DataColumn(label=ft.Text("Contraseña")),
+                    ft.DataColumn(label=ft.Text("Admin")),
                 ],
-                rows=filas
+                rows=filas,
+                heading_row_color=Colors.AMBER_100,
+                border=ft.border.all(1, Colors.BLACK),
+                width=880,
             )
-
-            page.views.append(
-                ft.View(
-                    route="/consultar_usuarios",
-                    controls=[
-                        ft.AppBar(title=ft.Text("Usuarios registrados")),
-                        tabla,
-                        ft.ElevatedButton("Volver al menú", on_click=lambda e: page.go("/menu"))
-                    ]
-                )
-            )
+            controles = [
+                ft.Text("Usuarios registrados", size=30, weight=ft.FontWeight.BOLD, color=Colors.PURPLE_700, text_align=ft.TextAlign.CENTER),
+                ft.ListView(
+                    [tabla],
+                    width=900,
+                    height=350,
+                    padding=10,
+                ),
+                ft.ElevatedButton("Volver al menú", width=150, on_click=lambda e: mostrar_menu()),
+            ]
+            limpiar_y_agregar([
+                ft.Column(controles,
+                          spacing=15,
+                          horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                          alignment=ft.MainAxisAlignment.CENTER,
+                          expand=True)
+            ])
         except Exception as err:
-            print("Error al consultar:", err)
-            mostrar_snack("Error al obtener datos de Airtable.")
-        page.update()
+            mostrar_snack("Error al obtener usuarios de Airtable")
+            print("Error consultar usuarios:", err)
 
-    # ---------------- Rutas ----------------
-    def cambiar_ruta(route):
-        if page.route == "/":
-            page.views.clear()
-            page.views.append(
-                ft.View(
-                    route="/",
-                    controls=[
-                        ft.AppBar(title=ft.Text("Iniciar sesión")),
-                        usuario_input,
-                        password_input,
-                        ft.ElevatedButton("Ingresar", on_click=validar_credenciales)
-                    ]
-                )
+    # --- AGREGAR BIOENERGÍA ---
+    cultivo_input = ft.TextField(label="Cultivo", width=300, icon=Icons.GRASS)
+    parte_input = ft.TextField(label="Parte", width=300, icon=Icons.PARTY_MODE)
+    cantidad_input = ft.TextField(label="Cantidad", width=300, keyboard_type=ft.KeyboardType.NUMBER, icon=Icons.FORMAT_LIST_NUMBERED)
+    area_input = ft.TextField(label="Área", width=300, keyboard_type=ft.KeyboardType.NUMBER, icon=Icons.SQUARE_FOOT)
+    energia_input = ft.TextField(label="Energía", width=300, keyboard_type=ft.KeyboardType.NUMBER, icon=Icons.BOLT)
+    municipio_input = ft.TextField(label="Municipio", width=300, icon=Icons.LOCATION_CITY)
+    latitud_input = ft.TextField(label="Latitud", width=300, keyboard_type=ft.KeyboardType.NUMBER, icon=Icons.PIN)
+    longitud_input = ft.TextField(label="Longitud", width=300, keyboard_type=ft.KeyboardType.NUMBER, icon=Icons.PIN)
+    btn_registrar_bioenergia = ft.ElevatedButton(
+        "Registrar bioenergía",
+        width=150,
+        icon=Icons.CHECK,
+        style=ft.ButtonStyle(bgcolor=Colors.PURPLE_700, color=Colors.WHITE)
+    )
+
+    def registrar_bioenergia(e):
+        try:
+            cultivo = cultivo_input.value.strip()
+            parte = parte_input.value.strip()
+            municipio = municipio_input.value.strip()
+
+            if not cultivo or not parte or not municipio:
+                mostrar_snack("Los campos cultivo, parte y municipio son obligatorios")
+                return
+
+            def parse_float(valor, nombre):
+                if not valor.strip():
+                    raise ValueError(f"El campo {nombre} es obligatorio")
+                return float(valor.replace(",", "."))
+
+            cantidad = parse_float(cantidad_input.value, "cantidad")
+            area = parse_float(area_input.value, "área")
+            energia = parse_float(energia_input.value, "energía")
+            latitud = parse_float(latitud_input.value, "latitud")
+            longitud = parse_float(longitud_input.value, "longitud")
+
+            nueva = Bioenergia(
+                cultivo=cultivo,
+                parte=parte,
+                cantidad=cantidad,
+                area=area,
+                energia=energia,
+                municipio=municipio,
+                latitud=latitud,
+                longitud=longitud,
             )
-        elif page.route == "/menu":
-            mostrar_menu_principal()
-        elif page.route == "/agregar_usuario":
-            mostrar_agregar_usuario()
-        elif page.route == "/consultar_usuarios":
-            mostrar_consultar_usuarios()
+            nueva.save()
+            mostrar_snack("Bioenergía registrada correctamente")
 
-        page.update()
+            cultivo_input.value = parte_input.value = municipio_input.value = ""
+            cantidad_input.value = area_input.value = energia_input.value = ""
+            latitud_input.value = longitud_input.value = ""
+            page.update()
 
-    page.on_route_change = cambiar_ruta
-    page.go(page.route)
+        except ValueError as ve:
+            mostrar_snack(str(ve))
+        except Exception as err:
+            mostrar_snack("Error al registrar bioenergía")
+            print("Error registrar bioenergía:", err)
 
-ft.app(target=main)
+    btn_registrar_bioenergia.on_click = registrar_bioenergia
 
+    def mostrar_agregar_bioenergia():
+        controles = [
+            ft.Text("Agregar bioenergía", size=30, weight=ft.FontWeight.BOLD, color=Colors.PURPLE_700, text_align=ft.TextAlign.CENTER),
+            cultivo_input,
+            parte_input,
+            cantidad_input,
+            area_input,
+            energia_input,
+            municipio_input,
+            latitud_input,
+            longitud_input,
+            btn_registrar_bioenergia,
+            ft.ElevatedButton("Volver al menú", width=150, on_click=lambda e: mostrar_menu()),
+        ]
+        limpiar_y_agregar([
+            ft.Column(controles,
+                      spacing=15,
+                      horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                      alignment=ft.MainAxisAlignment.CENTER,
+                      expand=True)
+        ])
+
+    # --- CONSULTAR BIOENERGÍAS ---
+    def mostrar_consultar_bioenergia():
+        try:
+            registros = Bioenergia.all()
+            filas = []
+            for r in registros:
+                filas.append(
+                    ft.DataRow(
+                        cells=[
+                            ft.DataCell(ft.Text(r.cultivo)),
+                            ft.DataCell(ft.Text(r.parte)),
+                            ft.DataCell(ft.Text(str(r.cantidad))),
+                            ft.DataCell(ft.Text(str(r.area))),
+                            ft.DataCell(ft.Text(str(r.energia))),
+                            ft.DataCell(ft.Text(r.municipio)),
+                            ft.DataCell(ft.Text(str(r.latitud))),
+                            ft.DataCell(ft.Text(str(r.longitud))),
+                        ]
+                    )
+                )
+            tabla = ft.DataTable(
+                columns=[
+                    ft.DataColumn(label=ft.Text("Cultivo")),
+                    ft.DataColumn(label=ft.Text("Parte")),
+                    ft.DataColumn(label=ft.Text("Cantidad")),
+                    ft.DataColumn(label=ft.Text("Área")),
+                    ft.DataColumn(label=ft.Text("Energía")),
+                    ft.DataColumn(label=ft.Text("Municipio")),
+                    ft.DataColumn(label=ft.Text("Latitud")),
+                    ft.DataColumn(label=ft.Text("Longitud")),
+                ],
+                rows=filas,
+                heading_row_color=Colors.AMBER_100,
+                border=ft.border.all(1, Colors.BLACK),
+                width=880,
+            )
+            controles = [
+                ft.Text("Bioenergías registradas", size=30, weight=ft.FontWeight.BOLD, color=Colors.PURPLE_700, text_align=ft.TextAlign.CENTER),
+                ft.ListView(
+                    [tabla],
+                    width=900,
+                    height=350,
+                    padding=10,
+                ),
+                ft.ElevatedButton("Volver al menú", width=150, on_click=lambda e: mostrar_menu()),
+            ]
+            limpiar_y_agregar([
+                ft.Column(controles,
+                          spacing=15,
+                          horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+                          alignment=ft.MainAxisAlignment.CENTER,
+                          expand=True)
+            ])
+        except Exception as err:
+            mostrar_snack("Error al obtener bioenergías")
+            print("Error consultar bioenergías:", err)
+
+    mostrar_login()
+
+if __name__ == "__main__":
+    ft.app(target=main)
