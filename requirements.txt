@@ -1,2 +1,2 @@
-flet==0.9.25
-pyairtable==1.1.0
+flet==0.28.2
+pyairtable==3.1.1
